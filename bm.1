@@ -1,0 +1,101 @@
+.TH BM 1 "11 Mar 2024"
+.SH NAME
+bm \- benchmark commands
+.SH SYNOPSIS
+.PP
+\fBbm\fP
+[\fIoptions\fP...]
+\fIcommand\fP
+['\fB;\fP' \fIcommand\fP]...
+.PP
+\fBbm\fP
+\fB\-a\fP
+[\fIoptions\fP...]
+\fIargs\fP '\fB;\fP'
+\fIcommand\fP
+['\fB;\fP' \fIcommand\fP]...
+.PP
+\fBbm\fP
+\fB\-A\fP
+[\fIoptions\fP...]
+\fIargs\fP '\fB;\fP'
+\fIutility\fP
+[\fIutility\fP]...
+.PP
+\fBbm\fP
+\fB\-c\fP
+[\fIoptions\fP...]
+\fIcommand\fP '\fB;\fP'
+\fIargs\fP
+['\fB;\fP' \fIargs\fP]...
+.SH DESCRIPTION
+.B bm
+runs commands repeatedly and reports how long on average each of them take to
+complete. It takes the following options and operands.
+.TP
+\fB\-i\fP \fIinfile\fP
+Direct the standard input of each command from the file \fIinfile\fP. This file
+is reopened for each run.
+.TP
+\fB\-q\fP
+Direct the standard error of each command to its standard output, which is
+always directed to \fB/dev/null\fP.
+.TP
+\fB\-n\fP \fIruns\fP
+Run each command
+.I runs
+times. 1000 by default.
+.TP
+\fB\-k\fP \fIsample\fP
+Consider only
+.I sample
+randomly selected runs of each command. Each command is run at least
+.I sample
+times even if a smaller number is specified with \fB\-n\fP. 100 by default.
+.TP
+\fB\-j\fP \fIjobs\fP
+Perform
+.I jobs
+runs concurrently. 1 by default.
+.TP
+\fB\-j\fP\ \fIjobs\fP \fB\-P\fP
+Run
+.I jobs
+commands in parallel. Unlimited by default, 1 if \fB\-P\fP is specified alone.
+.TP
+\fB\-z\fP \fIsleep\fP
+Sleep
+.I sleep
+milliseconds between runs of a command. 0 by default.
+.TP
+\fIargs\fP
+Optionally empty list of additional arguments. The following options control
+how it is used.
+.RS
+.TP
+\fB\-a\fP
+Argument list \fIargs\fP is appended to each \fIcommand\fP.
+.TP
+\fB\-A\fP
+Each \fIutility\fP is run with argument list \fIargs\fP.
+.TP
+\fB\-c\fP
+Each argument list \fIargs\fP is prepended with \fIcommand\fP.
+.RE
+.TP
+\fIcommand\fP
+A utility name optionally followed by arguments.
+.TP
+\fIutility\fP
+The name of a utility.
+.IP '\fB;\fP'
+A semicolon. Used for separating groups of operands. This needs to be quoted in
+most shells.
+.PP
+.B bm
+scans each command for arguments consisting of one or more backslashes followed
+by a semicolon, and removes one backslash from each.
+.PP
+.B bm
+forks itself for each command. Each fork prints the percentage of runs it has
+completed to standard error if sent a USR1 signal.

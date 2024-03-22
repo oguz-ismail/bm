@@ -1,0 +1,42 @@
+trap 'rm -f semtest*' EXIT
+set -e
+
+cat <<EOF >semtest.c
+#include <semaphore.h>
+int main(void) {
+	(void)SEM_FAILED;
+	sem_close((sem_t *)1);
+	sem_open((const char *)1, 0, 0);
+	sem_post((sem_t *)1);
+	sem_unlink((const char *)1);
+	sem_wait((sem_t *)1);
+}
+EOF
+
+cat <<'EOF' >semtest.makefile
+semtest: semtest.o
+	$(CC) $(LDFLAGS) -o $@ semtest.o
+EOF
+
+for ldflags in ${LDFLAGS:+"$LDFLAGS"} '' -lrt -lpthread \
+	-landroid-posix-semaphore; do
+	rm -f semtest.o
+	if make -f semtest.makefile "LDFLAGS=$ldflags" >/dev/null 2>&1; then
+		cat <<EOF >makefile
+${CC:+CC = $CC
+}CFLAGS = -O2
+LDFLAGS = $ldflags
+
+bm: bm.o
+	\$(CC) \$(LDFLAGS) -o \$@ bm.o
+
+clean:
+	rm -rf bm bm.o
+EOF
+		exit
+	fi
+done
+
+echo failed >&2
+exit 1
+# vim: ft=sh
