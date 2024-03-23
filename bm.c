@@ -67,7 +67,7 @@ main(int argc, char **argv) {
 	interval.tv_sec = 0;
 	interval.tv_nsec = 0;
 
-	while ((opt = getopt(argc, argv, "aAci:qn:k:Pj:z:")) != -1)
+	while ((opt = getopt(argc, argv, "+aAci:qn:k:Pj:z:")) != -1)
 		switch (opt) {
 		case 'A':
 			nosep = 1;
@@ -343,14 +343,23 @@ main(int argc, char **argv) {
 	fprintf(sort, " %13jd", max);
 	fprintf(sort, " ");
 
-	for (i = 0; i < argc; i++) {
+	if (prepend)
+		fprintf(sort, " ...");
+
+	n = append ? argc-add : argc;
+	i = prepend ? add : 0;
+
+	for (; i < n; i++) {
 		if ((p = strchr(argv[i], '\n'))) {
-			fprintf(sort, " %.*s", (int)(p-argv[i]), argv[i]);
+			fprintf(sort, " %.*s...", (int)(p-argv[i]), argv[i]);
 			break;
 		}
 
 		fprintf(sort, " %s", argv[i]);
 	}
+
+	if (append && add > 0 && i == n)
+		fprintf(sort, " ...");
 
 	fprintf(sort, "\n");
 

@@ -20,7 +20,7 @@ END {
 		for (j = 2; j < 5; j++)
 			cell[i, j] = sprintf("%.3f", cell[i, j]/unit)
 
-	split("%3s, %13s, %13s, %13s,  %s\n", fmt, ",")
+	split("%3s, %13s, %13s, %13s,  %s\n", fmt, /,/)
 	for (i = 1; i < NR; i++) {
 		for (j = 1; j <= 5; j++)
 			printf fmt[j], cell[i, j]
