@@ -18,6 +18,7 @@
 static volatile sig_atomic_t notify;
 
 static int number(const char *, int, int);
+static int find(char **, int, const char *, int);
 static void die(const char *);
 static void usage(void);
 
@@ -32,6 +33,7 @@ main(int argc, char **argv) {
 	const char *p;
 	int append, nosep;
 	int prepend;
+	int replace;
 	const char *infile;
 	int quiet;
 	int runs, sample;
@@ -39,7 +41,7 @@ main(int argc, char **argv) {
 	int parallel;
 	struct timespec interval;
 	int opt;
-	char **dst;
+	char **dst, **oargv;
 	int add;
 	struct sigaction catch, oact;
 	sigset_t usr1, omask;
@@ -57,6 +59,7 @@ main(int argc, char **argv) {
 
 	append = 0;
 	prepend = 0;
+	replace = 0;
 	nosep = 0;
 	infile = NULL;
 	quiet = 0;
@@ -67,7 +70,7 @@ main(int argc, char **argv) {
 	interval.tv_sec = 0;
 	interval.tv_nsec = 0;
 
-	while ((opt = getopt(argc, argv, "+aAci:qn:k:Pj:z:")) != -1)
+	while ((opt = getopt(argc, argv, "+aAcCi:qn:k:Pj:z:")) != -1)
 		switch (opt) {
 		case 'A':
 			nosep = 1;
@@ -76,6 +79,9 @@ main(int argc, char **argv) {
 			break;
 		case 'c':
 			prepend = 1;
+			break;
+		case 'C':
+			replace = 1;
 			break;
 		case 'i':
 			infile = optarg;
@@ -105,7 +111,7 @@ main(int argc, char **argv) {
 			usage();
 		}
 
-	if (append && prepend)
+	if (append+prepend+replace > 1)
 		usage();
 
 	argc -= optind;
@@ -114,16 +120,8 @@ main(int argc, char **argv) {
 
 	argv += optind;
 
-	if (append || prepend) {
-		add = -1;
-
-		i = prepend ? 1 : 0;
-		for (; i < argc; i++)
-			if (strcmp(argv[i], ";") == 0) {
-				add = i;
-				break;
-			}
-
+	if (append || prepend || replace) {
+		add = find(argv, argc, ";", prepend ? 1 : 0);
 		if (add == -1)
 			usage();
 
@@ -131,12 +129,22 @@ main(int argc, char **argv) {
 			dst = argv-1;
 			argv[add] = 0;
 		}
-		else {
+		else if (prepend) {
 			dst = argv+add;
+		}
+		else {
+			dst = NULL;
+
+			i = find(argv, add, "{}", 0);
+			if (i != -1)
+				dst = argv+i;
+
+			oargv = argv;
+			argv[add] = 0;
 		}
 
 		argc -= add+1;
-		if (append && argc <= 0)
+		if ((append || (replace && dst)) && argc <= 0)
 			usage();
 
 		argv += add+1;
@@ -174,7 +182,7 @@ main(int argc, char **argv) {
 	isparent = 1;
 	sibling = 0;
 
-	if (nosep) {
+	if (nosep || replace) {
 		while (argc > 1) {
 			sibling = fork();
 			if (sibling == -1) {
@@ -252,10 +260,21 @@ main(int argc, char **argv) {
 		argv = dst-add;
 		argc += add;
 	}
+	else if (replace) {
+		if (dst)
+			*dst = *argv;
+
+		argv = oargv;
+		argc = add;
+	}
 
 	for (i = 1; i < argc; i++) {
 		n = strspn(argv[i], "\\");
-		if (n > 0 && strcmp(argv[i]+n, ";") == 0)
+		if (n == 0)
+			continue;
+
+		p = argv[i]+n;
+		if (strcmp(p, ";") == 0 || strcmp(p, "{}") == 0)
 			argv[i]++;
 	}
 
@@ -343,11 +362,24 @@ main(int argc, char **argv) {
 	fprintf(sort, " %13jd", max);
 	fprintf(sort, " ");
 
-	if (prepend)
-		fprintf(sort, " ...");
+	i = 0;
+	n = argc;
 
-	n = append ? argc-add : argc;
-	i = prepend ? add : 0;
+	if (append) {
+		n = argc-add;
+	}
+	else if (prepend) {
+		i = add;
+	}
+	else if (replace) {
+		if (dst) {
+			i = dst-argv;
+			n = i+1;
+		}
+		else {
+			n = i;
+		}
+	}
 
 	for (; i < n; i++) {
 		if ((p = strchr(argv[i], '\n'))) {
@@ -357,9 +389,6 @@ main(int argc, char **argv) {
 
 		fprintf(sort, " %s", argv[i]);
 	}
-
-	if (append && add > 0 && i == n)
-		fprintf(sort, " ...");
 
 	fprintf(sort, "\n");
 
@@ -371,7 +400,7 @@ main(int argc, char **argv) {
 		printf(" %13s", "Average");
 		printf(" %13s", "Minimum");
 		printf(" %13s", "Maximum");
-		printf("  %s\n", "Command");
+		printf("  %s\n", "Subject");
 	}
 
 	fflush(stdout);
@@ -415,6 +444,15 @@ number(const char *s, int min, int max) {
 	return x;
 }
 
+static int
+find(char **a, int n, const char *s, int i) {
+	for (; i < n; i++)
+		if (strcmp(a[i], s) == 0)
+			return i;
+
+	return -1;
+}
+
 static void
 die(const char *s) {
 	perror(s);
@@ -428,6 +466,7 @@ Usage: bm [-i infile] [-q] [-n runs] [-k sample] [-P] [-j jobs]\n\
           [-z sleep] command [';' command]...\n\
        bm -a [options...] args ';' command [';' command]...\n\
        bm -A [options...] args ';' utility [utility]...\n\
-       bm -c [options...] command ';' args [';' args]...\n", stderr);
+       bm -c [options...] command ';' args [';' args]...\n\
+       bm -C [options...] template ';' arg [arg]...\n", stderr);
 	_exit(1);
 }

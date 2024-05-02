@@ -1,4 +1,4 @@
-.TH BM 1 "11 Mar 2024"
+.TH BM 1 "2 May 2024"
 .SH NAME
 bm \- benchmark commands
 .SH SYNOPSIS
@@ -28,6 +28,13 @@ bm \- benchmark commands
 \fIcommand\fP '\fB;\fP'
 \fIargs\fP
 ['\fB;\fP' \fIargs\fP]...
+.PP
+\fBbm\fP
+\fB\-C\fP
+[\fIoptions\fP...]
+\fItemplate\fP '\fB;\fP'
+\fIarg\fP
+[\fIarg\fP]...
 .SH DESCRIPTION
 .B bm
 runs commands repeatedly and reports how long on average each of them take to
@@ -88,13 +95,21 @@ A utility name optionally followed by arguments.
 .TP
 \fIutility\fP
 The name of a utility.
+.TP
+\fIarg\fP
+A single argument.
+.TP
+\fItemplate\fP
+A command template. The first word matching the string
+.B {}
+is replaced with each \fIarg\fP.
 .IP '\fB;\fP'
 A semicolon. Used for separating groups of operands. This needs to be quoted in
 most shells.
 .PP
 .B bm
 scans each command for arguments consisting of one or more backslashes followed
-by a semicolon, and removes one backslash from each.
+by a semicolon or the string \fB{}\fP, and removes one backslash from each.
 .PP
 .B bm
 forks itself for each command. Each fork prints the percentage of runs it has
